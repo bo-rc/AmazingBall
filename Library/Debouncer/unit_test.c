@@ -87,7 +87,7 @@ int main(){
         }
 
         // E.g. using timer:
-        else if ((uint16_t)TMR3 >= TIMER_INTERVEL) //
+        else if (TMR3 >= TIMER_INTERVEL) // use interrupt if you want to be precise
         {
             TMR3 = 0x00; // clear Timer register
 
