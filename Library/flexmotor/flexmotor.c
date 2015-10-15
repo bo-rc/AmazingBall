@@ -7,6 +7,28 @@
 
 #include "flexmotor.h"
 
+void init_adc2(){
+    // ADC2 for Joystick axis
+    CLEARBIT(AD2CON1bits.ADON);
+
+    SETBIT(TRISBbits.TRISB4); //
+    CLEARBIT(AD2PCFGLbits.PCFG4); // AD2 AN20 input pin set analog
+    SETBIT(TRISBbits.TRISB5);
+    CLEARBIT(AD2PCFGLbits.PCFG5);
+    //Configure AD2CON1
+    CLEARBIT(AD2CON1bits.AD12B);
+    AD2CON1bits.FORM = 0;
+    AD2CON1bits.SSRC = 0x7;
+
+    AD2CON2 = 0;
+    //Configure AD1CON3
+    CLEARBIT(AD2CON3bits.ADRC);
+    AD2CON3bits.SAMC = 0x1F;
+    AD2CON3bits.ADCS = 0x2;
+
+    SETBIT(AD2CON1bits.ADON);
+}
+
 void motor_init(uint8_t chan)
 {
     // use Timer 2
