@@ -48,7 +48,7 @@ extern "C" {
 #define HIGH (0.895*PERIOD) // 2.1ms -> 180 degree
 #endif
 
-extern void init_adc2(); // adc2 is connected to joystick x/y
+extern void init_adc2(); // adc2 is hardwired to Joystick X/Y
 extern void motor_init(uint8_t chan);
 extern void motor_set_duty(uint8_t chan, uint16_t duty);
 
