@@ -13,9 +13,18 @@ void button_init(Debouncer * button)
     button->stable = 0;
 }
 
+void button_sample(Debouncer * button, uint8_t Port_Reading)
+{
+    uint8_t i = 0;
+    for (; i < NUM_SAMPLES; ++i)
+    {
+        __delay_ms(DELAY_TIME_MS);
+        button->samples[i] = Port_Reading;
+    }
+}
+
 void button_read(Debouncer * button, uint8_t Port_Reading)
 {
-
     button->samples[button->sampleIdx] = Port_Reading;
 
     if (++button->sampleIdx == NUM_SAMPLES)
