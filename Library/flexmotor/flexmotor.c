@@ -1,73 +1,85 @@
 /*
- * File:   flexmotor.c
+ * File:   flextouch.c
  * Author: Bo Liu
  *
- * Created on October 10, 2015, 11:59 AM
+ * Created on October 14, 2015, 2:31 PM
  */
 
-#include "flexmotor.h"
+#include "flextouch.h"
 
-void init_adc2(){
-    // ADC2 for Joystick axis
-    CLEARBIT(AD2CON1bits.ADON);
 
-    SETBIT(TRISBbits.TRISB4); //
-    CLEARBIT(AD2PCFGLbits.PCFG4); // AD2 AN20 input pin set analog
-    SETBIT(TRISBbits.TRISB5);
-    CLEARBIT(AD2PCFGLbits.PCFG5);
-    //Configure AD2CON1
-    CLEARBIT(AD2CON1bits.AD12B);
-    AD2CON1bits.FORM = 0;
-    AD2CON1bits.SSRC = 0x7;
-
-    AD2CON2 = 0;
-    //Configure AD1CON3
-    CLEARBIT(AD2CON3bits.ADRC);
-    AD2CON3bits.SAMC = 0x1F;
-    AD2CON3bits.ADCS = 0x2;
-
-    SETBIT(AD2CON1bits.ADON);
+void Delay_ms(uint16_t time_ms) {
+    __delay_ms(time_ms);
 }
 
-void motor_init(uint8_t chan)
-{
-    // use Timer 2
-    CLEARBIT(T2CONbits.TON); // Disable Timer
-    CLEARBIT(T2CONbits.TCS); // Select internal instruction cycle clock
-    CLEARBIT(T2CONbits.TGATE); // Disable Gated Timer mode
-    TMR2 = 0x00; // Clear timer register
-    T2CONbits.TCKPS = 0b10; // Select 1:64 Prescaler
-    CLEARBIT(IFS0bits.T2IF); // Clear Timer2 interrupt status flag
-    CLEARBIT(IEC0bits.T2IE); // Disable Timer2 interrupt enable control bit
-    PR2 = PERIOD; // Set timer period 20ms:
+//Initialize the ADC
+void init_adc1(){
 
-   if(chan == CHANNEL_X )
-   {
-        CLEARBIT(TRISDbits.TRISD7); // Set OC7 as output
-        OC7R = MID; // Set the initial to mid position
-        OC7RS = MID; // Load OCRS: next pwm duty cycle
-        OC7CON = 0x0006; // Set OC7: PWM, no fault check, Timer2
-        SETBIT(T2CONbits.TON); // Turn Timer 2 on
-    }
-    else if (chan == CHANNEL_Y)
-    {
-        CLEARBIT(TRISDbits.TRISD8); // Set OC8 as output
-        OC8R = MID; // Set the initial throw to mid position
-        OC8RS = MID; // Load OCRS: next pwm duty cycle
-        OC8CON = 0x0006; // Set OC8: PWM, no fault check, Timer2
-        SETBIT(T2CONbits.TON); // Turn Timer 2 on
+    // 0. Disable ADC1
+    CLEARBIT(AD1CON1bits.ADON);
+
+    // 1. set input pins
+    SETBIT(TRISBbits.TRISB15); // set input. AN15
+    SETBIT(TRISBbits.TRISB9); // set input. AN9
+
+    // 2. set analog pins
+    CLEARBIT(AD1PCFGLbits.PCFG15); // set analog. X is hardwired to AN15
+    CLEARBIT(AD1PCFGLbits.PCFG9); // set analog. Y is hardwired to AN9
+
+    // 3. Configure AD1CON1
+    SETBIT(AD1CON1bits.AD12B); // set 12-bit mode
+    AD1CON1bits.FORM = 0; // set integer output
+    AD1CON1bits.SSRC = 0x7; // set automatic conversion
+
+    // 4. Configure AD1CON2
+    AD1CON2 = 0; // not using scanning sampling
+
+    // 5. Configure AD1CON3
+    CLEARBIT(AD1CON3bits.ADRC); // internal clock source
+    AD1CON3bits.SAMC = 0x1F; // sample-to-conversion clock = 31Tad
+    AD1CON3bits.ADCS = 0x2; // Tad = 3Tcy (Time cycles)
+
+    // 6. Enable ADC1
+    SETBIT(AD1CON1bits.ADON);
+}
+
+//Initialize the touch screen
+void touch_init(){
+    // set up the I/O pins E1, E2, E3 to be output pins
+    CLEARBIT(TRISEbits.TRISE1); //I/O pin set to output
+    CLEARBIT(TRISEbits.TRISE2); //I/O pin set to output
+    CLEARBIT(TRISEbits.TRISE3); //I/O pin set to output
+
+    // enter standby mode
+    SETBIT(LATEbits.LATE1); // use Latch registers
+    SETBIT(LATEbits.LATE2);
+    CLEARBIT(LATEbits.LATE3);
+}
+
+// select the dimension for the touch Screen
+void touch_select_dim(uint8_t dim) {
+
+    if(dim == DIM_X) {
+        CLEARBIT(LATEbits.LATE1); // use Latch registers
+        SETBIT(LATEbits.LATE2);
+        SETBIT(LATEbits.LATE3);
+        AD1CHS0bits.CH0SA = 0x000F; //set ADC to sample AN15
+        Delay_ms(15);
+    } else if (dim == DIM_Y) {
+        // set up the I/O pins E1, E2, E3 for Y
+        SETBIT(LATEbits.LATE1); // use Latch registers
+        CLEARBIT(LATEbits.LATE2);
+        CLEARBIT(LATEbits.LATE3);
+        AD1CHS0bits.CH0SA = 0x0009; // set ADC to sample AN9
+        Delay_ms(15);
     }
 }
 
-void motor_set_duty(uint8_t chan, uint16_t duty)
-{
-    
-    if (chan == CHANNEL_X)
-    {
-        OC7RS = PERIOD - duty; /* Load OCRS: next pwm duty cycle */
-    }
-    else if (chan == CHANNEL_Y)
-    {
-        OC8RS = PERIOD - duty; /* Load OCRS: next pwm duty cycle */
-    }
+uint16_t touch_adc(){
+
+    SETBIT(AD1CON1bits.SAMP); // start to sample
+    while(!AD1CON1bits.DONE); // wait for conversion to finish
+    CLEARBIT(AD1CON1bits.DONE); // MUST HAVE! clear conversion done bit
+
+    return ADC1BUF0;
 }
